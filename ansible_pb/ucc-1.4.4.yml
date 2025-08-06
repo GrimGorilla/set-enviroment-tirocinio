@@ -1,0 +1,47 @@
+- name: ucc install
+  hosts: localhost
+  tasks:
+    - name: check libucc.la
+      ansible.builtin.stat:
+        path: /home/lory/sw_install/gcc-13.4.0/ucc-1.4.4/lib/libucc.la
+      register: check_ucc
+    - name: Install ucc
+      when: not check_ucc.stat.exists
+      block:
+#        - name: install requirements
+#          become: true
+#          ansible.builtin.apt:
+#            autoclean: true
+#            pkg: 
+#              - autoconf 
+#              - m4
+#            state: present
+#            update_cache: true 
+        - name: extract ucc archive
+          ansible.builtin.unarchive:
+            dest: /home/lory/building/
+            remote_src: true
+            src: /home/lory/archive/ucc-1.4.4.tar.gz
+            creates: /home/lory/building/ucc-1.4.4/autogen.sh
+        - name: building modules
+          ansible.builtin.shell:
+            cmd: |-
+              set -eo pipefail
+              source /etc/bash.bashrc
+              source /etc/profile.d/modules.sh
+              module load cuda-12.9.1 gcc-13.4.0 ucx-1.18.1
+              ./autogen.sh
+              ./configure --prefix=/home/lory/sw_install/gcc-13.4.0/ucc-1.4.4 --enable-dependency-tracking --enable-shared=yes --enable-static=yes --enable-optimizations=yes --with-march=native --with-avx --with-nvcc-gencode='-gencode=arch=compute_75,code=sm_75  -gencode=arch=compute_80,code=sm_80 -gencode=arch=compute_80,code=compute_80  -gencode=arch=compute_86,code=sm_86 -gencode=arch=compute_86,code=compute_86  -gencode=arch=compute_90,code=sm_90 -gencode=arch=compute_90,code=compute_90' --with-cuda=/home/lory/sw_install/nvidia/cuda-12.9.1 --with-nccl=/home/lory/sw_install/nvidia/cuda-12.9.1 --with-ucx=/home/lory/sw_install/gcc-13.4.0/ucx-1.18.1
+              make -j 6
+              make install
+            chdir: /home/lory/building/ucc-1.4.4
+            creates: /home/lory/sw_install/gcc-13.4.0/ucc-1.4.4/lib/libucc.la
+            executable: /bin/bash
+        - name: Remove building file
+          ansible.builtin.file:
+            path: /home/lory/building/ucc-1.4.4
+            state: absent
+    - name: Copy ucc modules to ansible
+      ansible.builtin.copy:
+        src: ucc-1.4.4
+        dest: /home/lory/modulefiles/libs/

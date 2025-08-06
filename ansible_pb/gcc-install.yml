@@ -1,0 +1,36 @@
+- name: gcc install
+  hosts: localhost
+  tasks:
+    - name: check libcc1.la
+      ansible.builtin.stat:
+        path: /home/lory/sw_install/gcc/13.4/lib/libcc1.la
+      register: check_gcc
+    - name: Install gcc
+      when: not check_gcc.stat.exists
+      block:
+        - name: extract gcc archive
+          ansible.builtin.unarchive:
+            dest: /home/lory/building/
+            remote_src: true
+            src: /home/lory/archive/gcc-13.4.0.tar.gz
+            creates: /home/lory/building/gcc-13.4.0/configure
+        - name: building modules
+          ansible.builtin.shell:
+            cmd: |-
+              set -eo pipefail
+              ./contrib/download_prerequisites
+              export GCC_INSTALL_PREFIX=/home/lory/sw_install/gcc/13.4
+              ./configure --prefix="$GCC_INSTALL_PREFIX" --enable-languages=c,c++,fortran --enable-lto --disable-bootstrap --disable-multilib
+              make -j 6
+              make install
+            chdir: /home/lory/building/gcc-13.4.0
+            creates: /home/lory/sw_install/gcc/13.4/lib/libcc1.la
+            executable: /bin/bash
+        - name: Remove building file
+          ansible.builtin.file:
+            path: /home/lory/building/gcc-13.4.0
+            state: absent
+    - name: Copy gcc modules to ansible
+      ansible.builtin.copy:
+        src: gcc-13.4.0
+        dest: /home/lory/modulefiles/comps/

@@ -1,0 +1,10 @@
+#%Module
+
+module-help {    gcc-13.4.0 module to load gcc libraries}
+module-help {}
+
+module-whatis {gcc-13.4.0 module to load gcc libraries}
+
+prepend-path PATH /home/lory/sw_install/gcc/13.4/bin/
+prepend-path LD_LIBRARY_PATH {/home/lory/sw_install/gcc/13.4/lib64:/home/lory/sw_install/gcc/13.4/lib}
+

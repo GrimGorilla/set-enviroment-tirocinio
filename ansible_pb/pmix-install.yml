@@ -1,0 +1,79 @@
+- name: pmix install
+  hosts: localhost
+  tasks:
+    - name: check libpmix.la
+      ansible.builtin.stat:
+        path: /home/lory/sw_install/gcc-13.4.0/pmix-5.0.8/lib/libpmix.la
+      register: check_pmix
+    - name: Install pmix
+      when: not check_pmix.stat.exists
+      block: 
+        - name: install requirements
+          become: true
+          ansible.builtin.apt:
+            autoclean: true
+            pkg:
+              - libltdl7
+              - libltdl-dev
+              - zlib1g
+              - zlib1g-dev
+              - libjansson4
+              - libjansson-dev
+              - curl
+              - libcurl4t64
+              - libcurl4-openssl-dev
+              - libevent-2.1-7t64
+              - libevent-core-2.1-7t64
+              - libevent-dev
+              - munge
+              - libmunge-dev
+              - libmunge2
+              - lz4json
+              - json-glib-tools
+              - libcjson1
+              - libcjson-dev
+              - libfastjson-dev
+              - libfastjson4
+              - libjson-c-dev
+              - libjson-c5
+              - libjson-glib-1.0-0
+              - libjson-glib-1.0-common
+              - libjson-glib-dev
+              - libjson-parse-perl
+              - libconfig-json-perl
+              - libjson-perl
+              - libjsoncpp25
+              - libjsoncpp-dev
+              - libjsonparser-dev
+              - libjsonparser1.1
+              - libsbjson-dev
+              - libsbjson2.3
+            state: present
+            update_cache: true
+        - name: extract pmix archive
+          ansible.builtin.unarchive:
+            dest: /home/lory/building/
+            remote_src: true
+            src: /home/lory/archive/pmix-5.0.8.tar.gz
+            creates: /home/lory/building/pmix-5.0.8/configure
+        - name: building modules
+          ansible.builtin.shell:
+            cmd: |-
+              set -eo pipefail
+              source /etc/bash.bashrc
+              source /etc/profile.d/modules.sh
+              module load gcc-13.4.0
+              ./configure --prefix=/home/lory/sw_install/gcc-13.4.0/pmix-5.0.8 --enable-dependency-tracking --disable-devel-check --disable-debug --disable-pmix-timing --disable-dummy-handshake --disable-ipv6 --disable-python-bindings --enable-shared=yes --enable-static=yes --enable-wrapper-rpath=yes --enable-wrapper-runpath --enable-dlopen --enable-per-user-config-files --enable-pretty-print-stacktrace --enable-pmix-binaries --enable-nonglobal-dlopen --enable-pty-support --enable-visibility --with-pmix-headers --with-libevent --without-libev --with-jansson --with-curl --with-zlib --with-libltdl --with-munge --with-hwloc=/home/lory/sw_install/gcc-13.4.0/hwloc-2.12.1
+              make -j 6
+              make install
+            chdir: /home/lory/building/pmix-5.0.8
+            creates: /home/lory/sw_install/gcc-13.4.0/pmix-5.0.8/lib/libpmix.la
+            executable: /bin/bash
+        - name: Remove building file
+          ansible.builtin.file:
+            path: /home/lory/building/pmix-5.0.8
+            state: absent
+    - name: Copy pmix modules to ansible
+      ansible.builtin.copy:
+        src: pmix-5.0.8
+        dest: /home/lory/modulefiles/libs/

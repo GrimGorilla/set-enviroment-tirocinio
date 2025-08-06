@@ -1,0 +1,58 @@
+- name: wget ansible
+  hosts: localhost
+  tasks:
+    - name: Download gcc v13.4.0
+      ansible.builtin.get_url:
+        url: https://ftp.fu-berlin.de/unix/languages/gcc/releases/gcc-13.4.0/gcc-13.4.0.tar.gz
+        dest: /home/lory/ansible-archive
+        mode: 0644
+    - name: Download CUDA Toolkit v12.9.1
+      ansible.builtin.get_url:
+        url: https://developer.download.nvidia.com/compute/cuda/12.9.1/local_installers/cuda_12.9.1_575.57.08_linux.run
+        dest: /home/lory/ansible-archive
+        mode: 0644
+    - name: Download PMIx v5.0.8
+      ansible.builtin.get_url:
+        url: https://github.com/openpmix/openpmix/releases/download/v5.0.8/pmix-5.0.8.tar.gz
+        dest: /home/lory/ansible-archive
+        mode: 0644
+    - name: Download ucc v1.4.4
+      ansible.builtin.get_url:
+        url: https://github.com/openucx/ucc/archive/refs/tags/v1.4.4.tar.gz
+        dest: /home/lory/ansible-archive
+        mode: 0644
+    - name: Download ucx v1.18.1
+      ansible.builtin.get_url:
+        url: https://github.com/openucx/ucx/archive/refs/tags/v1.18.1.tar.gz
+        dest: /home/lory/ansible-archive
+        mode: 0644
+    - name: Download slurm v24.11.6
+      ansible.builtin.get_url:
+        url: https://download.schedmd.com/slurm/slurm-24.11.6.tar.bz2
+        dest: /home/lory/ansible-archive
+        mode: 0644
+    - name: Download MPI v4.1.8
+      ansible.builtin.get_url:
+        url: https://download.open-mpi.org/release/open-mpi/v4.1/openmpi-4.1.8.tar.bz2
+        dest: /home/lory/ansible-archive
+        mode: 0644
+    - name: Download hvlock v2.12.1
+      ansible.builtin.get_url:
+        url: https://download.open-mpi.org/release/hwloc/v2.12/hwloc-2.12.1.tar.gz
+        dest: /home/lory/ansible-archive 
+        mode: 0644
+    - name: Download cudnn v9.11.0
+      ansible.builtin.get_url:
+        url: https://developer.download.nvidia.com/compute/cudnn/redist/cudnn/linux-x86_64/cudnn-linux-x86_64-9.11.0.98_cuda12-archive.tar.xz
+        dest: /home/lory/ansible-archive
+        mode: 0644
+    - name: Download nccl v2.27.6
+      ansible.builtin.get_url:
+        url: https://developer.nvidia.com/downloads/compute/machine-learning/nccl/secure/2.27.6/agnostic/x64/nccl_2.27.6-1+cuda12.9_x86_64.txz/
+        dest: /home/lory/ansible-archive
+        mode: 0644
+    - name: Clone gpu-burn
+      ansible.builtin.git:
+        repo: https://github.com/wilicc/gpu-burn.git
+        dest: /home/lory/ansible-archive
+        version: master

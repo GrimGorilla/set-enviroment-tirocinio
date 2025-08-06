@@ -1,0 +1,73 @@
+- name: cuda cudnn nccl install
+  hosts: localhost
+  tasks:
+    - name: building modules
+      ansible.builtin.shell:
+        cmd: |-
+          set -eo pipefail
+          chmod +x cuda_12.9.1_575.57.08_linux.run
+          ./cuda_12.9.1_575.57.08_linux.run --toolkit --silent --installpath=/home/lory/sw_install/nvidia/cuda-12.9.1
+        chdir: /home/lory/archive
+        creates: /home/lory/sw_install/nvidia/cuda-12.9.1/bin/cuda-uninstaller
+        executable: /bin/bash
+    - name: check libcudnn_adv.so
+      ansible.builtin.stat:
+        path: /home/lory/sw_install/nvidia/cuda-12.9.1/lib64/libcudnn_adv.so
+      register: check_libcudnn
+    - name: Install cuddn
+      when: not check_libcudnn.stat.exists
+      block: 
+        - name: extract cudnn archive
+          ansible.builtin.unarchive:
+            dest: /home/lory/building/
+            remote_src: true
+            src: /home/lory/archive/cudnn-linux-x86_64-9.11.0.98_cuda12-archive.tar.xz
+            creates: /home/lory/building/cudnn-linux-x86_64-9.11.0.98_cuda12-archive/lib/libcudnn_adv.so
+        - name: Copy include lib to cuda
+          ansible.builtin.copy:
+            src: "{{ item_cudnn.src }}"
+            dest: "{{ item_cudnn.dest }}"
+            remote_src: true
+            local_follow: false
+          loop:
+            - { src: "/home/lory/building/cudnn-linux-x86_64-9.11.0.98_cuda12-archive/lib/", dest: "/home/lory/sw_install/nvidia/cuda-12.9.1/lib64" }
+            - { src: "/home/lory/building/cudnn-linux-x86_64-9.11.0.98_cuda12-archive/include/", dest: "/home/lory/sw_install/nvidia/cuda-12.9.1/include" }
+          loop_control:
+            loop_var: item_cudnn
+        - name: delete building cudnn directory
+          ansible.builtin.file:
+            path: /home/lory/building/cudnn-linux-x86_64-9.11.0.98_cuda12-archive
+            state: absent
+    - name: check ncclras
+      ansible.builtin.stat:
+        path: /home/lory/sw_install/nvidia/cuda-12.9.1/bin/ncclras
+      register: check_ncclras
+    - name: Install nccl
+      when: not check_ncclras.stat.exists
+      block:
+        - name: extract nccl archive
+          ansible.builtin.unarchive:
+            dest: /home/lory/building/
+            remote_src: true
+            src: /home/lory/archive/nccl_2.27.6-1+cuda12.9_x86_64.txz
+            creates: /home/lory/building/nccl_2.27.6-1+cuda12.9_x86_64/bin/ncclras
+        - name: Copy include lib bin to cuda
+          ansible.builtin.copy:
+            src: "{{ item_nccl.src }}"
+            dest: "{{ item_nccl.dest }}"
+            remote_src: true
+            local_follow: false
+          loop:
+            - { src: "/home/lory/building/nccl_2.27.6-1+cuda12.9_x86_64/lib/", dest: "/home/lory/sw_install/nvidia/cuda-12.9.1/lib64" }
+            - { src: "/home/lory/building/nccl_2.27.6-1+cuda12.9_x86_64/include/", dest: "/home/lory/sw_install/nvidia/cuda-12.9.1/include" }
+            - { src: "/home/lory/building/nccl_2.27.6-1+cuda12.9_x86_64/bin/", dest: "/home/lory/sw_install/nvidia/cuda-12.9.1/bin" }
+          loop_control:
+            loop_var: item_nccl
+        - name: delete building nccl directory
+          ansible.builtin.file:
+            path: /home/lory/building/nccl_2.27.6-1+cuda12.9_x86_64
+            state: absent
+    - name: Copy cuda modules to ansible
+      ansible.builtin.copy:
+        src: cuda-12.9.1
+        dest: /home/lory/modulefiles/libs/

@@ -1,0 +1,53 @@
+- name: hwloc install
+  hosts: localhost
+  tasks:
+    - name: check hwloc-bind
+      ansible.builtin.stat:
+        path: /home/lory/sw_install/hwloc-2.12.1/bin/hwloc-bind
+      register: check_hwloc
+    - name: Install hwloc
+      when: not check_hwloc.stat.exists
+      block:
+        - name: install requirements
+          become: true
+          ansible.builtin.apt:
+            autoclean: true
+            pkg: 
+              - libxml2 
+              - libxml2-dev 
+              - libxml2-utils 
+              - libxmlb2
+              - libxmlb-dev
+              - libcairo2
+              - libcairo2-dev
+              - libcairo-gobject2
+            state: present
+            update_cache: true 
+        - name: extract hwloc archive
+          ansible.builtin.unarchive:
+            dest: /home/lory/building/
+            remote_src: true
+            src: /home/lory/archive/hwloc-2.12.1.tar.gz
+            creates: /home/lory/building/hwloc-2.12.1/configure
+        - name: building modules
+          ansible.builtin.shell:
+            cmd: |-
+              set -eo pipefail
+              source /etc/bash.bashrc
+              source /etc/profile.d/modules.sh
+              module load gcc-13.4.0 cuda-12.9.1
+              ./configure --prefix=/home/lory/sw_install/gcc-13.4.0/hwloc-2.12.1 --enable-dependency-tracking --enable-shared=yes --enable-static=yes --enable-visibility --enable-plugins=Linux,x86,cuda,nvml,opencl,gl,pci,xml_libxml --disable-nvml --disable-rsmi --disable-levelzero --with-x --with-cuda=/home/lory/sw_install/nvidia/cuda-12.9.1
+              make -j 6
+              make install
+            chdir: /home/lory/building/hwloc-2.12.1
+            creates: /home/lory/sw_install/hwloc-2.12.1/bin/hwloc-bind
+            executable: /bin/bash
+        - name: Remove building file
+          ansible.builtin.file:
+            path: /home/lory/building/hwloc-2.12.1
+            state: absent
+    - name: Copy hwloc modules to ansible
+      ansible.builtin.copy:
+        src: hwloc-2.12.1
+        dest: /home/lory/modulefiles/libs/
+

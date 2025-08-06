@@ -1,0 +1,47 @@
+- name: ucx install
+  hosts: localhost
+  tasks:
+    - name: check libucm.la
+      ansible.builtin.stat:
+        path: /home/lory/sw_install/gcc-13.4.0/ucx-1.18.1/lib/libucm.la
+      register: check_ucx
+    - name: Install ucx
+      when: not check_ucx.stat.exists
+      block:
+        - name: install requirements
+          become: true
+          ansible.builtin.apt:
+            autoclean: true
+            pkg: 
+              - fuse3 
+              - libfuse3-3 
+              - libfuse3-dev
+            state: present
+            update_cache: true 
+        - name: extract ucx archive
+          ansible.builtin.unarchive:
+            dest: /home/lory/building/
+            remote_src: true
+            src: /home/lory/archive/ucx-1.18.1.tar.gz
+            creates: /home/lory/building/ucx-1.18.1/configure
+        - name: building modules
+          ansible.builtin.shell:
+            cmd: |-
+              set -eo pipefail
+              source /etc/bash.bashrc
+              source /etc/profile.d/modules.sh
+              module load gcc-13.4.0
+              ./configure --prefix=/home/lory/sw_install/gcc-13.4.0/ucx-1.18.1 --enable-dependency-tracking --enable-examples --enable-tuning --enable-shared=yes --enable-static=yes --enable-cma --enable-mt --enable-devel-headers --enable-compiler-opt=3 --enable-optimizations --with-march=native --with-avx --with-fuse3
+              make -j 6
+              make install
+            chdir: /home/lory/building/ucx-1.18.1
+            creates: /home/lory/sw_install/gcc-13.4.0/ucx-1.18.1/lib/libucm.la
+            executable: /bin/bash
+        - name: Remove building file
+          ansible.builtin.file:
+            path: /home/lory/building/ucx-1.18.1
+            state: absent
+    - name: Copy ucx modules to ansible
+      ansible.builtin.copy:
+        src: ucx-1.18.1
+        dest: /home/lory/modulefiles/libs/

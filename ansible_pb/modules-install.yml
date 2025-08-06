@@ -1,0 +1,100 @@
+- name: install enviroment modules
+  hosts: localhost
+  tasks:
+    - name: install dejagnu
+      become: true
+      ansible.builtin.apt:
+        autoclean: true
+        name: dejagnu
+        state: present
+        update_cache: true
+    - name: check modulecmd
+      ansible.builtin.stat:
+        path: /home/lory/sw_install/gcc-13.3.0/modules-5.6.0/bin/modulecmd
+      register: check_modulecmd
+    - name: print check_module
+      ansible.builtin.debug:
+        msg: "{{ check_modulecmd }}"
+    - name: block to install modules
+      when: not check_modulecmd.stat.exists
+      block: 
+        - name: extract modules archive
+          ansible.builtin.unarchive:
+            dest: /home/lory/building/modules-5.6.0/
+            remote_src: true
+            src: /home/lory/archive/modules-5.6.0.tar.gz
+            creates: /home/lory/building/modules-5.6.0/configure
+        - name: building modules
+          ansible.builtin.shell:
+            cmd: |-
+              set -eo pipefail
+              ./configure --prefix=/home/lory/sw_install/gcc-13.3.0/modules-5.6.0 --enable-modulespath --enable-new-features
+              make
+              make install
+            chdir: /home/lory/building/modules-5.6.0/
+            creates: /home/lory/sw_install/gcc-13.3.0/modules-5.6.0/bin/modulecmd
+            executable: /bin/bash
+        - name: delete building directory
+          ansible.builtin.file:
+            path: /home/lory/building/modules-5.6.0/
+            state: absent
+    - name: check files and dirs
+      ansible.builtin.stat:
+        path: "{{ item_files_dirs }}"
+      register: check_files_dirs
+      loop:
+        - /etc/profile.d/modules.sh
+        - /etc/profile.d/modules.csh
+        - /home/lory/modulefiles/comps
+        - /home/lory/modulefiles/libs
+        - /home/lory/modulefiles/sw
+      loop_control:
+        loop_var: item_files_dirs
+    - name: print check_files_dirs
+      ansible.builtin.debug:
+        msg: "{{ check_files_dirs.results | map(attribute='stat.exists') }}"
+    - name: Getting content from file
+      ansible.builtin.slurp:
+        src: "/home/lory/sw_install/gcc-13.3.0/modules-5.6.0/etc/modulespath"
+      register: modulepath_content
+    - name: Getting current lines with pattern
+      ansible.builtin.set_fact:
+        pattern_in_file: "{{ modulepath_content.content | b64decode | regex_search('/home/lory/modulefiles' | string) }}"
+    - name: print modulepath content
+      ansible.builtin.debug:
+        msg: "{{ pattern_in_file }}"
+    - name: Block to config modules
+      when: 
+        - (check_files_dirs.results | map(attribute='stat.exists')) | regex_search('false')
+        - pattern_in_file | length > 0
+      block:
+        - name: link module file
+          ansible.builtin.file:
+            path: "{{ item_path.dest }}"
+            state: link
+            src: "{{ item_path.src }}"
+          loop: 
+            - { src: "/home/lory/sw_install/gcc-13.3.0/modules-5.6.0/init/profile.sh", dest: "/etc/profile.d/modules.sh" }
+            - { src: "/home/lory/sw_install/gcc-13.3.0/modules-5.6.0/init/profile.csh", dest: "/etc/profile.d/modules.csh" }
+          loop_control:
+            loop_var: item_path
+        - name: create modulefiles dirs
+          ansible.builtin.file:
+            path: "/home/lory/modulefiles/{{ item_newdir }}"
+            state: directory
+          loop:
+            - comps
+            - libs
+            - sw
+          loop_control:
+            loop_var: item_newdir
+        - name: add line to file
+          ansible.builtin.lineinfile:
+            line: "/home/lory/modulefiles/{{ item_dir }}"
+            path: /home/lory/sw_install/gcc-13.3.0/modules-5.6.0/etc/modulespath
+          loop:
+            - comps
+            - libs
+            - sw
+          loop_control: 
+            loop_var: item_dir
