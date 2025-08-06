@@ -54,5 +54,5 @@
     - name: Clone gpu-burn
       ansible.builtin.git:
         repo: https://github.com/wilicc/gpu-burn.git
-        dest: /home/lory/ansible-archive
+        dest: /home/lory/ansible-archive/gpu-burn
         version: master
